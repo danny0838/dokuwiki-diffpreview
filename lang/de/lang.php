@@ -1,3 +1,3 @@
 <?php
 
-$lang['changes'] = 'Änderungen';
+$lang['changes'] = 'Ã„nderungen';
