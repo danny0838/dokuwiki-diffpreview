@@ -1,0 +1,33 @@
+/* diffpreview specific styles */
+td.line_numbers {
+	padding:0 .5em;
+	font-family:'Bitstream Vera Sans Mono','Courier',monospace;
+	font-size:115%;
+	-moz-user-select:none;
+	-khtml-user-select:none;
+	user-select:none;
+}
+.line_numbers {
+	background-color:#ececec;
+	color:#aaa;
+	padding:1em .5em;
+	border-right:1px solid #ddd;
+	text-align:right;
+}
+
+.gc {
+	color:#999;
+	background-color:#EAF2F5;
+}
+
+.line_del {
+	color:#000;
+	background-color:#fdd;
+}
+
+.line_add {
+	color:#000;
+	background-color:#dfd;
+}
+
+/* IE won't understand but doesn't require it */

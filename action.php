@@ -4,6 +4,63 @@ if(!defined('DOKU_INC')) die();
 if(!defined('DOKU_PLUGIN')) define('DOKU_PLUGIN',DOKU_INC.'lib/plugins/');
 require_once(DOKU_PLUGIN.'action.php');
 require_once(DOKU_INC.'inc/form.php');
+require_once(DOKU_INC.'inc/DifferenceEngine.php');
+
+class UnifiedTableDiffFormatter extends DiffFormatter {
+	function UnifiedTableDiffFormatter($context_lines = 3) {
+		$this->leading_context_lines = $context_lines;
+		$this->trailing_context_lines = $context_lines;
+	}
+
+	function format($diff) {
+		$val = parent::format($diff);
+		$val = str_replace('  ','&nbsp; ', $val);
+		$val = str_replace("\t",'&nbsp;&nbsp;', $val);
+		return $val;
+	}
+
+	function _lineNumber($number = "") {
+		return "<td class=\"line_numbers\">$number</td>";
+	}
+
+	function _block_header($xbeg, $xlen, $ybeg, $ylen) {
+		$this->_x = $xbeg;
+		$this->_y = $ybeg;
+		if ($xlen != 1)
+			$xbeg .= "," . $xlen;
+		if ($ylen != 1)
+			$ybeg .= "," . $ylen;
+		return "<tr>".$this->_lineNumber("...")."".$this->_lineNumber("...")."<td class=\"gc\">@@ -$xbeg +$ybeg @@</td>\n";
+	}
+
+	function _added($lines) {
+		foreach ($lines as $line) {
+			print("<tr>".$this->_lineNumber()."".$this->_lineNumber($this->_y)."<td class=\"line_add\">+$line</td></tr>\n");
+			$this->_y++;
+		}
+	}
+
+	function _deleted($lines) {
+		foreach ($lines as $line) {
+			print("<tr>".$this->_lineNumber($this->_x)."".$this->_lineNumber()."<td class=\"line_del\">-$line</td></tr>\n");
+			$this->_x++;
+		}
+	}
+
+	function _context( $lines ) {
+		foreach ($lines as $line) {
+			print("<tr>".$this->_lineNumber($this->_x)."".$this->_lineNumber($this->_y)."<td>&nbsp;$line</td></tr>\n");
+			$this->_x++;
+			$this->_y++;
+		}
+	}
+
+	function _changed($orig, $final) {
+		$this->_deleted($orig);
+		$this->_added($final);
+	}
+}
+
 
 class action_plugin_diffpreview extends DokuWiki_Action_Plugin {
 
@@ -46,12 +103,30 @@ class action_plugin_diffpreview extends DokuWiki_Action_Plugin {
 		global $TEXT;
 		global $PRE;
 		global $SUF;
+		global $ID;
 				
 		if('changes' != $event->data) return;
 		
 		html_edit($TEXT);
 		echo '<br id="scroll__here" />';
-		html_diff(con($PRE,$TEXT,$SUF));
+		switch($this->getconf('diff_type'))
+		{
+		case 'unified':
+			$l_text  = rawWiki($ID,'');
+			$r_text  = cleanText(con($PRE,$TEXT,$SUF));
+
+			$df = new Diff(explode("\n",htmlspecialchars($l_text)), explode("\n",htmlspecialchars($r_text)));
+			$tdf = new UnifiedTableDiffFormatter();
+
+			print p_locale_xhtml('diff');
+			echo '<table>';
+			echo $tdf->format($df);
+			echo '</table>';
+			break;
+		default:
+			html_diff(con($PRE,$TEXT,$SUF));
+		}
+
 		$event->preventDefault();
 		return;
 	}
