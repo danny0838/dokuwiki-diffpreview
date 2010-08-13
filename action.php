@@ -99,55 +99,191 @@ class action_plugin_diffpreview extends DokuWiki_Action_Plugin {
 		}
 	}
 	
+	function _unified_diff($text='',$intro=true) {
+	// This is just copy of html_diff until diff generation and output
+
+		global $ID;
+		global $REV;
+		global $lang;
+		global $conf;
+		
+		// we're trying to be clever here, revisions to compare can be either
+		// given as rev and rev2 parameters, with rev2 being optional. Or in an
+		// array in rev2.
+		$rev1 = $REV;
+
+		if(is_array($_REQUEST['rev2'])){
+			$rev1 = (int) $_REQUEST['rev2'][0];
+			$rev2 = (int) $_REQUEST['rev2'][1];
+
+			if(!$rev1){
+				$rev1 = $rev2;
+				unset($rev2);
+			}
+		}else{
+			$rev2 = (int) $_REQUEST['rev2'];
+		}
+
+		if($text){                      // compare text to the most current revision
+			$l_rev   = '';
+			$l_text  = rawWiki($ID,'');
+			$l_head  = '<a class="wikilink1" href="'.wl($ID).'">'.
+				$ID.' '.dformat((int) @filemtime(wikiFN($ID))).'</a> '.
+				$lang['current'];
+
+			$r_rev   = '';
+			$r_text  = cleanText($text);
+			$r_head  = $lang['yours'];
+		}else{
+			if($rev1 && $rev2){            // two specific revisions wanted
+				// make sure order is correct (older on the left)
+				if($rev1 < $rev2){
+					$l_rev = $rev1;
+					$r_rev = $rev2;
+				}else{
+					$l_rev = $rev2;
+					$r_rev = $rev1;
+				}
+			}elseif($rev1){                // single revision given, compare to current
+				$r_rev = '';
+				$l_rev = $rev1;
+			}else{                        // no revision was given, compare previous to current
+				$r_rev = '';
+				$revs = getRevisions($ID, 0, 1);
+				$l_rev = $revs[0];
+				$REV = $l_rev; // store revision back in $REV
+			}
+
+			// when both revisions are empty then the page was created just now
+			if(!$l_rev && !$r_rev){
+				$l_text = '';
+			}else{
+				$l_text = rawWiki($ID,$l_rev);
+			}
+			$r_text = rawWiki($ID,$r_rev);
+
+			if(!$l_rev){
+				$l_head = '&mdash;';
+			}else{
+				$l_info   = getRevisionInfo($ID,$l_rev,true);
+				if($l_info['user']){
+					$l_user = editorinfo($l_info['user']);
+					if(auth_ismanager()) $l_user .= ' ('.$l_info['ip'].')';
+				} else {
+					$l_user = $l_info['ip'];
+				}
+				$l_user  = '<span class="user">'.$l_user.'</span>';
+				$l_sum   = ($l_info['sum']) ? '<span class="sum">'.hsc($l_info['sum']).'</span>' : '';
+				if ($l_info['type']===DOKU_CHANGE_TYPE_MINOR_EDIT) $l_minor = 'class="minor"';
+
+				$l_head = '<a class="wikilink1" href="'.wl($ID,"rev=$l_rev").'">'.
+				$ID.' ['.dformat($l_rev).']</a>'.
+				'<br />'.$l_user.' '.$l_sum;
+			}
+
+			if($r_rev){
+				$r_info   = getRevisionInfo($ID,$r_rev,true);
+				if($r_info['user']){
+					$r_user = editorinfo($r_info['user']);
+					if(auth_ismanager()) $r_user .= ' ('.$r_info['ip'].')';
+				} else {
+					$r_user = $r_info['ip'];
+				}
+				$r_user = '<span class="user">'.$r_user.'</span>';
+				$r_sum  = ($r_info['sum']) ? '<span class="sum">'.hsc($r_info['sum']).'</span>' : '';
+				if ($r_info['type']===DOKU_CHANGE_TYPE_MINOR_EDIT) $r_minor = 'class="minor"';
+
+				$r_head = '<a class="wikilink1" href="'.wl($ID,"rev=$r_rev").'">'.
+				$ID.' ['.dformat($r_rev).']</a>'.
+				'<br />'.$r_user.' '.$r_sum;
+			}elseif($_rev = @filemtime(wikiFN($ID))){
+				$_info   = getRevisionInfo($ID,$_rev,true);
+				if($_info['user']){
+					$_user = editorinfo($_info['user']);
+					if(auth_ismanager()) $_user .= ' ('.$_info['ip'].')';
+				} else {
+					$_user = $_info['ip'];
+				}
+				$_user = '<span class="user">'.$_user.'</span>';
+				$_sum  = ($_info['sum']) ? '<span class="sum">'.hsc($_info['sum']).'</span>' : '';
+				if ($_info['type']===DOKU_CHANGE_TYPE_MINOR_EDIT) $r_minor = 'class="minor"';
+
+				$r_head  = '<a class="wikilink1" href="'.wl($ID).'">'.
+				$ID.' ['.dformat($_rev).']</a> '.
+				'('.$lang['current'].')'.				'<br />'.$_user.' '.$_sum;
+			}else{
+				$r_head = '&mdash; ('.$lang['current'].')';
+			}
+		}
+
+		$df = new Diff(explode("\n",htmlspecialchars($l_text)), explode("\n",htmlspecialchars($r_text)));
+		$tdf = new UnifiedTableDiffFormatter();
+
+		print p_locale_xhtml('diff');
+
+		if (!$text) {
+			$diffurl = wl($ID, array('do'=>'diff', 'rev2[0]'=>$l_rev, 'rev2[1]'=>$r_rev));
+			ptln('<p class="difflink">');
+			ptln('  <a class="wikilink1" href="'.$diffurl.'">'.$lang['difflink'].'</a>');
+			ptln('</p>');
+		}
+
+		echo '<table>';
+		echo $tdf->format($df);
+		echo '</table>';
+	}
+
 	function _tpl_act_changes(&$event, $param) {
 		global $TEXT;
 		global $PRE;
 		global $SUF;
 		global $ID;
-				
-		if('changes' != $event->data) return;
-		
-		html_edit($TEXT);
-		echo '<br id="scroll__here" />';
-		switch($this->getconf('diff_type'))
+	
+		switch($event->data)
 		{
-		case 'unified':
-			$l_text  = rawWiki($ID,'');
-			$r_text  = cleanText(con($PRE,$TEXT,$SUF));
-
-			$df = new Diff(explode("\n",htmlspecialchars($l_text)), explode("\n",htmlspecialchars($r_text)));
-			$tdf = new UnifiedTableDiffFormatter();
-
-			print p_locale_xhtml('diff');
-			echo '<table>';
-			echo $tdf->format($df);
-			echo '</table>';
+		case 'changes':
+			html_edit($TEXT);
+			echo '<br id="scroll__here" />';
+			if('unified' == $this->getconf('diff_type'))
+				$this->_unified_diff(con($PRE,$TEXT,$SUF));
+			else
+				html_diff(con($PRE,$TEXT,$SUF));
+			$event->preventDefault();
 			break;
-		default:
-			html_diff(con($PRE,$TEXT,$SUF));
+		case 'unified_diff':
+			$this->_unified_diff();
+			$event->preventDefault();
+			break;
 		}
-
-		$event->preventDefault();
 		return;
 	}
 	
 	function _action_act_preprocess(&$event, $param) {
 		global $ACT;
 		global $INFO;
-		
-		if(!is_array($event->data) || !array_key_exists('changes', $event->data)) return;
-		
-		if('preview' == act_permcheck('preview')
-			&& 'preview' == act_draftsave('preview')
-			&& $INFO['editable']
-			&& 'preview' == act_edit('preview')) {
-			$ACT = 'changes';
-			$event->stoppropagation();
-			$event->preventDefault();
-			$this->_change_headers = true;
-		}else{
-			$ACT = 'preview';
+	
+		if(is_array($event->data) && array_key_exists('changes', $event->data)) {
+			if('preview' == act_permcheck('preview')
+				&& 'preview' == act_draftsave('preview')
+				&& $INFO['editable']
+				&& 'preview' == act_edit('preview')) {
+				$ACT = 'changes';
+				$event->stoppropagation();
+				$event->preventDefault();
+				$this->_change_headers = true;
+			}else{
+				$ACT = 'preview';
+			}
+		}elseif(is_array($event->data) && array_key_exists('diff', $event->data) 
+			|| 'diff' == $event->data) {
+			if('unified' == $this->getconf('diff_type'))
+			{
+				$ACT = 'unified_diff';
+				$event->stoppropagation();
+				$event->preventDefault();
+			}
 		}
+		return;
 	}
 	
 	function _tpl_metaheader_output(&$event, $param) {
