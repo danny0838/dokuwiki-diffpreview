@@ -12,20 +12,6 @@ class action_plugin_diffpreview extends DokuWiki_Action_Plugin {
 	}
 	
 	/**
-	 * return some info
-	 */
-	function getInfo(){
-		return array(
-	 'author' => 'Mikhail I. Izmestev',
-	 'email'  => 'izmmishao5@gmail.com',
-	 'date'   => '2010-01-10',
-	 'name'   => 'diffpreview',
-	 'desc'   => 'add diff preview',
-	 'url'    => '',
-		);
-	}
-
-	/**
 	 * Register its handlers with the DokuWiki's event controller
 	 */
 	function register(&$controller) {

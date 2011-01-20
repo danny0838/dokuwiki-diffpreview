@@ -1,0 +1,7 @@
+base   diffpreview
+author Mikhail I. Izmestev
+email  izmmishao5@gmail.com
+date   2011-01-20
+name   diffpreview
+desc   add diff preview
+url    http://dokuwiki.org/plugin:diffpreview
