@@ -24,7 +24,7 @@ class action_plugin_diffpreview extends DokuWiki_Action_Plugin {
 	function _edit_form(&$event, $param) {
 		$preview = $event->data->findElementById('edbtn__preview');
 		if($preview) {
-			$event->data->insertElement($preview, form_makeButton('submit', 'changes', $this->getLang('changes'), array('id' => 'edbtn__changes')));
+			$event->data->insertElement($preview+1, form_makeButton('submit', 'changes', $this->getLang('changes'), array('id' => 'edbtn__changes')));
 		}
 	}
 	
