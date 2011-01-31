@@ -18,7 +18,6 @@ class action_plugin_diffpreview extends DokuWiki_Action_Plugin {
 		$controller->register_hook('HTML_EDITFORM_OUTPUT', 'BEFORE',  $this, '_edit_form');
 		$controller->register_hook('ACTION_ACT_PREPROCESS', 'BEFORE',  $this, '_action_act_preprocess');
 		$controller->register_hook('TPL_ACT_UNKNOWN', 'BEFORE',  $this, '_tpl_act_changes');
-		$controller->register_hook('TPL_METAHEADER_OUTPUT', 'BEFORE',  $this, '_tpl_metaheader_output');
 	}
 
 	function _edit_form(&$event, $param) {
@@ -58,29 +57,6 @@ class action_plugin_diffpreview extends DokuWiki_Action_Plugin {
 			$this->_change_headers = true;
 		}else{
 			$ACT = 'preview';
-		}
-	}
-	
-	function _tpl_metaheader_output(&$event, $param) {
-		global $conf;
-		global $INFO;
-		
-		if(!$this->_change_headers) return;
-		
-		for($i = 0; $i < count($event->data['script']); $i++) {
-			if(false !== strpos($event->data['script'][$i]['src'], DOKU_BASE."lib/exe/js.php?edit=0")) {
-				$event->data['script'][$i]['src'] = DOKU_BASE.'lib/exe/js.php?edit=1&write=1';
-				break;
-			}
-		}
-		if($i < count($event->data['script'])) {
-			$script = "NS='".$INFO['namespace']."';";
-			if($conf['useacl'] && $_SERVER['REMOTE_USER']){
-				require_once(DOKU_INC.'inc/toolbar.php');
-				$script .= "SIG='".toolbar_signature()."';";
-			}
-			array_unshift($event->data['script'], array( 'type'=>'text/javascript', 'charset'=>'utf-8',
-										'_data'=> $script));
 		}
 	}
 }
