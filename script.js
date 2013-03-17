@@ -2,8 +2,12 @@
  * diffpreview plugin
  */
 
-addInitEvent(function() {
-	var btn_changes = $('edbtn__changes');
-	if(btn_changes)
-		btn_changes.onclick = function(){ textChanged = false; }; 
+jQuery(function() {
+    jQuery('#edbtn__changes').click(
+        function() {
+            window.onbeforeunload = '';
+            textChanged = false;
+            window.keepDraft = true; // needed to keep draft on page unload
+        }
+    );
 });
